@@ -5,22 +5,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// -------- Logger med statuskod --------
+// ---------- Logger med statuskod & tid ----------
 app.use((req, res, next) => {
-  const started = Date.now();
+  const t0 = Date.now();
   res.on("finish", () => {
     const authHdr = req.header("authorization") ? "✅" : "❌";
     console.log(
-      `[IN] ${req.method} ${req.path} ${res.statusCode} (${Date.now() - started}ms, auth=${authHdr})`
+      `[IN] ${req.method} ${req.path} ${res.statusCode} (${Date.now() - t0}ms, auth=${authHdr})`
     );
   });
   next();
 });
 
-// -------- Health --------
+// ---------- Health ----------
 app.get("/", (_req, res) => res.send("MCP up"));
 
-// -------- n8n-workflows (namn -> URL via env) --------
+// ---------- n8n-workflows (namn -> URL via env) ----------
 const N8N_MAP = {
   "create-lead": process.env.N8N_CREATE_LEAD_URL,
   "send-welcome-email": process.env.N8N_SEND_WELCOME_URL,
@@ -32,9 +32,9 @@ const AVAILABLE_WORKFLOWS = Object.entries(N8N_MAP)
   .map(([name]) => name);
 
 // Fallback så enum aldrig blir tom (hindrar klienter från att rata verktyget)
-const FLOW_ENUM = (AVAILABLE_WORKFLOWS?.length ? AVAILABLE_WORKFLOWS : ["create-lead"]);
+const FLOW_ENUM = AVAILABLE_WORKFLOWS?.length ? AVAILABLE_WORKFLOWS : ["create-lead"];
 
-// -------- MANIFEST (återanvänds av flera routes) --------
+// ---------- MANIFEST (återanvänds av flera routes) ----------
 const MANIFEST = {
   tools: [
     {
@@ -76,27 +76,27 @@ const MANIFEST = {
   ],
 };
 
-// -------- PUBLIC: manifest (GET + POST) --------
+// ---------- PUBLIC: manifest (GET + POST) ----------
 app.get("/mcp/manifest", (_req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json(MANIFEST);
 });
 
 app.post("/mcp/manifest", (_req, res) => {
-  // vissa klienter POST:ar mot manifest – svara med samma JSON
+  // Vissa klienter POST:ar manifest – svara med samma JSON
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json(MANIFEST);
 });
 
-// -------- PUBLIC: tools-lista (hela objekten) --------
+// ---------- PUBLIC: tools-lista (hela objekten) ----------
 app.get("/mcp/tools", (_req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ tools: MANIFEST.tools });
 });
 
-// -------- Auth för allt annat --------
+// ---------- Auth för allt annat ----------
 app.use((req, res, next) => {
-  // publik whitelist
+  // Publika endpoints
   if (["/", "/mcp/manifest", "/mcp/tools"].includes(req.path)) return next();
 
   const auth = req.header("authorization") || "";
@@ -113,8 +113,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// -------- Hjälpare --------
+// ---------- Hjälpare ----------
 function getParams(req) {
+  // Stöd både { params: {...} } och direkt body + legacy keys
   const raw = req.body?.params ?? req.body ?? {};
   const flow = raw.flow ?? raw.workflow;
   const data = raw.data ?? raw.payload ?? {};
@@ -130,7 +131,7 @@ async function tryParseJson(text) {
   }
 }
 
-// -------- TOOLS --------
+// ---------- TOOLS ----------
 
 // 1) Hello World
 app.post("/mcp/tools/hello_world", (req, res) => {
@@ -147,8 +148,8 @@ app.post("/mcp/tools/call_n8n", async (req, res) => {
     if (!flow) {
       return res.status(400).json({ ok: false, error: "Missing 'flow'" });
     }
-    const url = N8N_MAP[flow];
 
+    const url = N8N_MAP[flow];
     if (!FLOW_ENUM.includes(flow) || !url) {
       return res.status(400).json({
         ok: false,
