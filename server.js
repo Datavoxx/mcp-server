@@ -107,11 +107,11 @@ app.post("/mcp/manifest", (_req, res) => {
 app.get("/mcp/tools", (_req, res) => {
   noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  // *** Viktigt för AgentKit: endast namnlistan ***
+  // Viktigt för AgentKit: returnera ENDAST namnlistan
   res.status(200).json({ tools: MANIFEST.tools.map((t) => t.name) });
 });
 
-// (Valfri) Fulla tool-objekt för dina tester
+// (Valfri) Fulla tool-objekt för tester
 app.get("/mcp/tools/full", (_req, res) => {
   noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
