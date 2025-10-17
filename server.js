@@ -85,6 +85,11 @@ const MANIFEST = {
   ],
 };
 
+// ---------- BOOT-loggar ----------
+console.log("[BOOT] AVAILABLE_WORKFLOWS:", AVAILABLE_WORKFLOWS);
+console.log("[BOOT] FLOW_ENUM:", FLOW_ENUM);
+console.log("[BOOT] MANIFEST.tools:", MANIFEST.tools.map((t) => t.name));
+
 // ---------- PUBLIC: manifest (GET + POST) ----------
 app.get("/mcp/manifest", (_req, res) => {
   noCache(res);
@@ -168,6 +173,11 @@ app.post("/mcp/tools/call_n8n", async (req, res) => {
       });
     }
 
+    // Extra logg: vilken URL och payload som faktiskt skickas
+    console.log(
+      `[call_n8n] flow=${flow} url=${url} payload=${JSON.stringify(data).slice(0, 500)}`
+    );
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
@@ -189,6 +199,20 @@ app.post("/mcp/tools/call_n8n", async (req, res) => {
     console.error("[call_n8n] error:", e);
     return res.status(500).json({ ok: false, error: e?.message || "Unknown error" });
   }
+});
+
+// ---------- Debug (skyddad) ----------
+app.get("/mcp/debug", (_req, res) => {
+  // Denna route ligger efter auth-mellanvaran och kräver därför MCP_KEY
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200).json({
+    availableWorkflows: AVAILABLE_WORKFLOWS,
+    flowEnum: FLOW_ENUM,
+    n8nMapSet: Object.fromEntries(
+      Object.entries(N8N_MAP).map(([k, v]) => [k, Boolean(v)])
+    ),
+    manifestTools: MANIFEST.tools,
+  });
 });
 
 const PORT = process.env.PORT || 3000;
