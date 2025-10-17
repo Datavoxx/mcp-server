@@ -103,8 +103,16 @@ app.post("/mcp/manifest", (_req, res) => {
   res.status(200).json(MANIFEST);
 });
 
-// ---------- PUBLIC: tools-lista ----------
+// ---------- PUBLIC: tools ----------
 app.get("/mcp/tools", (_req, res) => {
+  noCache(res);
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  // *** Viktigt för AgentKit: endast namnlistan ***
+  res.status(200).json({ tools: MANIFEST.tools.map((t) => t.name) });
+});
+
+// (Valfri) Fulla tool-objekt för dina tester
+app.get("/mcp/tools/full", (_req, res) => {
   noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ tools: MANIFEST.tools });
@@ -112,7 +120,7 @@ app.get("/mcp/tools", (_req, res) => {
 
 // ---------- Auth för allt annat ----------
 app.use((req, res, next) => {
-  if (["/", "/mcp/manifest", "/mcp/tools"].includes(req.path)) return next();
+  if (["/", "/mcp/manifest", "/mcp/tools", "/mcp/tools/full"].includes(req.path)) return next();
 
   const auth = req.header("authorization") || "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : null;
