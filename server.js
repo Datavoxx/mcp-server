@@ -5,6 +5,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ---------- Stäng av cache/etag globalt ----------
+app.set("etag", false);
+
+function noCache(res) {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+}
+
 // ---------- Logger med statuskod & tid ----------
 app.use((req, res, next) => {
   const t0 = Date.now();
@@ -34,7 +43,7 @@ const AVAILABLE_WORKFLOWS = Object.entries(N8N_MAP)
 // Fallback så enum aldrig blir tom (hindrar klienter från att rata verktyget)
 const FLOW_ENUM = AVAILABLE_WORKFLOWS?.length ? AVAILABLE_WORKFLOWS : ["create-lead"];
 
-// ---------- MANIFEST (återanvänds av flera routes) ----------
+// ---------- MANIFEST ----------
 const MANIFEST = {
   tools: [
     {
@@ -78,25 +87,26 @@ const MANIFEST = {
 
 // ---------- PUBLIC: manifest (GET + POST) ----------
 app.get("/mcp/manifest", (_req, res) => {
+  noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json(MANIFEST);
 });
 
 app.post("/mcp/manifest", (_req, res) => {
-  // Vissa klienter POST:ar manifest – svara med samma JSON
+  noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json(MANIFEST);
 });
 
-// ---------- PUBLIC: tools-lista (hela objekten) ----------
+// ---------- PUBLIC: tools-lista ----------
 app.get("/mcp/tools", (_req, res) => {
+  noCache(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ tools: MANIFEST.tools });
 });
 
 // ---------- Auth för allt annat ----------
 app.use((req, res, next) => {
-  // Publika endpoints
   if (["/", "/mcp/manifest", "/mcp/tools"].includes(req.path)) return next();
 
   const auth = req.header("authorization") || "";
@@ -115,7 +125,6 @@ app.use((req, res, next) => {
 
 // ---------- Hjälpare ----------
 function getParams(req) {
-  // Stöd både { params: {...} } och direkt body + legacy keys
   const raw = req.body?.params ?? req.body ?? {};
   const flow = raw.flow ?? raw.workflow;
   const data = raw.data ?? raw.payload ?? {};
